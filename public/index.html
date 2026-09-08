@@ -39,36 +39,36 @@
             <div class="row g-3 align-items-stretch">
               <div class="col-lg">
                 <span class="form-label path-label"><span class="side-dot side-left"></span> CARPETA 1</span>
-                <label id="left-picker" class="folder-picker" for="left-folder">
-                  <input id="left-folder" class="visually-hidden" type="file" webkitdirectory multiple />
+                <input id="left-folder" class="visually-hidden" type="file" webkitdirectory multiple />
+                <button id="left-picker" class="folder-picker" type="button">
                   <span class="folder-icon" aria-hidden="true">📁</span>
                   <span class="folder-copy">
                     <strong id="left-folder-name">Seleccionar carpeta</strong>
                     <small id="left-folder-detail">Haz clic para elegirla en tu equipo</small>
                   </span>
                   <span class="folder-action">Elegir</span>
-                </label>
+                </button>
               </div>
               <div class="col-lg-auto swap-column">
                 <button id="swap-button" class="btn btn-outline-secondary rounded-circle swap-button" type="button" title="Intercambiar carpetas" aria-label="Intercambiar carpetas">⇄</button>
               </div>
               <div class="col-lg">
                 <span class="form-label path-label"><span class="side-dot side-right"></span> CARPETA 2</span>
-                <label id="right-picker" class="folder-picker" for="right-folder">
-                  <input id="right-folder" class="visually-hidden" type="file" webkitdirectory multiple />
+                <input id="right-folder" class="visually-hidden" type="file" webkitdirectory multiple />
+                <button id="right-picker" class="folder-picker" type="button">
                   <span class="folder-icon" aria-hidden="true">📁</span>
                   <span class="folder-copy">
                     <strong id="right-folder-name">Seleccionar carpeta</strong>
                     <small id="right-folder-detail">Haz clic para elegirla en tu equipo</small>
                   </span>
                   <span class="folder-action">Elegir</span>
-                </label>
+                </button>
               </div>
             </div>
 
             <div class="privacy-strip mt-4">
               <span aria-hidden="true">🔒</span>
-              <small>El navegador no revela la ruta completa y ningún fichero se envía al servidor.</small>
+              <small>Ningún fichero se envía al servidor. En Chrome y Edge podrás autorizar el guardado directo al editar.</small>
             </div>
 
             <div id="progress-region" class="progress-region d-none mt-3" aria-live="polite">
@@ -140,12 +140,78 @@
 
           <div class="result-footer px-3 py-2 border-top">
             <span id="result-count">0 ficheros</span>
-            <span id="duration"></span>
+            <span><span class="edit-help">Pulsa una fila diferente para abrir el editor · </span><span id="duration"></span></span>
           </div>
         </div>
         <div id="warnings" class="mt-3"></div>
       </section>
     </main>
+
+    <div id="diff-editor" class="editor-overlay d-none" role="dialog" aria-modal="true" aria-labelledby="editor-title">
+      <div class="editor-dialog">
+        <header class="editor-header">
+          <div class="min-w-0">
+            <p class="editor-eyebrow mb-1">COMPARACIÓN Y EDICIÓN</p>
+            <h2 id="editor-title" class="h5 mb-0 text-truncate">Fichero diferente</h2>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span id="editor-comparison-status" class="status-badge badge-different">Distinto</span>
+            <button id="editor-close" class="btn-close" type="button" aria-label="Cerrar editor"></button>
+          </div>
+        </header>
+
+        <div class="editor-transfer-bar">
+          <button id="copy-left-to-right" class="btn btn-sm btn-outline-primary" type="button">Copiar todo →</button>
+          <span id="difference-summary" class="editor-difference-summary">Calculando diferencias…</span>
+          <button id="copy-right-to-left" class="btn btn-sm btn-outline-info" type="button">← Copiar todo</button>
+        </div>
+
+        <div id="editor-message" class="editor-message d-none" aria-live="polite"></div>
+
+        <div class="editor-grid">
+          <section class="editor-panel editor-panel-left" aria-labelledby="editor-left-name">
+            <div class="editor-panel-header">
+              <div class="min-w-0">
+                <span class="editor-side-label"><span class="side-dot side-left"></span> CARPETA 1</span>
+                <strong id="editor-left-name" class="editor-file-name">—</strong>
+              </div>
+              <div class="editor-tags">
+                <span id="editor-left-encoding" class="encoding-badge">—</span>
+                <span id="editor-left-state" class="dirty-badge">Sin cambios</span>
+              </div>
+            </div>
+            <textarea id="editor-left" class="code-editor" wrap="off" spellcheck="false" aria-label="Contenido del fichero de la carpeta 1"></textarea>
+            <div class="editor-panel-footer">
+              <span id="editor-left-meta">—</span>
+              <button id="save-left" class="btn btn-sm btn-primary" type="button">Guardar izquierda</button>
+            </div>
+          </section>
+
+          <section class="editor-panel editor-panel-right" aria-labelledby="editor-right-name">
+            <div class="editor-panel-header">
+              <div class="min-w-0">
+                <span class="editor-side-label"><span class="side-dot side-right"></span> CARPETA 2</span>
+                <strong id="editor-right-name" class="editor-file-name">—</strong>
+              </div>
+              <div class="editor-tags">
+                <span id="editor-right-encoding" class="encoding-badge">—</span>
+                <span id="editor-right-state" class="dirty-badge">Sin cambios</span>
+              </div>
+            </div>
+            <textarea id="editor-right" class="code-editor" wrap="off" spellcheck="false" aria-label="Contenido del fichero de la carpeta 2"></textarea>
+            <div class="editor-panel-footer">
+              <span id="editor-right-meta">—</span>
+              <button id="save-right" class="btn btn-sm btn-primary" type="button">Guardar derecha</button>
+            </div>
+          </section>
+        </div>
+
+        <footer class="editor-footer-note">
+          <span>Los botones de copia sustituyen el contenido completo del lado de destino. También puedes editar manualmente.</span>
+          <span><kbd>Ctrl</kbd> + <kbd>S</kbd> guarda el panel activo.</span>
+        </footer>
+      </div>
+    </div>
 
     <footer class="container-fluid px-4 py-4 text-center text-secondary small">
       FolderLens funciona íntegramente en tu navegador · No sube archivos a Internet

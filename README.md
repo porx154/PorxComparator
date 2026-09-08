@@ -2,11 +2,22 @@
 
 Comparador privado de carpetas para el navegador. Compara la estructura, el tamaño y el contenido SHA-256 de los ficheros sin subirlos a Internet.
 
+Los ficheros de texto marcados como **Distinto** se pueden abrir en un editor de dos paneles. El editor permite modificar cualquiera de los lados, copiar todo el contenido de izquierda a derecha o de derecha a izquierda y guardar el resultado.
+
 ## Privacidad
 
 La comparación se ejecuta íntegramente en el navegador mediante las API `File` y `Web Crypto`. El servidor entrega solamente HTML, CSS y JavaScript: no recibe rutas, nombres ni contenido de los ficheros seleccionados.
 
 Por seguridad, los navegadores no muestran la ruta completa del equipo. En su lugar, el usuario selecciona cada carpeta mediante el selector del sistema.
+
+## Editor de diferencias
+
+- Pulsa una fila marcada como **Distinto** para abrir sus dos versiones.
+- La etiqueta superior detecta UTF-8, UTF-8 con BOM, UTF-16 LE/BE, ASCII o ANSI (Windows-1252).
+- Usa **Copiar todo →** o **← Copiar todo** para sustituir un lado por el otro, o edita manualmente.
+- En Chrome y Edge, el selector moderno permite solicitar permiso y guardar sobre el fichero original.
+- En navegadores sin acceso de escritura, el botón de guardar descarga una copia editada.
+- Los ficheros binarios y los textos mayores de 8 MB no se abren en el editor para evitar daños o un consumo excesivo de memoria.
 
 ## Desarrollo local
 
