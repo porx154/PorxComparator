@@ -82,6 +82,14 @@ type EditorContext = {
   right: EditorDocument;
 };
 
+type LineDiffResult = {
+  leftLines: string[];
+  rightLines: string[];
+  leftChanged: boolean[];
+  rightChanged: boolean[];
+  approximate: boolean;
+};
+
 const MAX_EDITABLE_BYTES = 8 * 1024 * 1024;
 
 const form = document.querySelector<HTMLFormElement>("#compare-form")!;
@@ -112,6 +120,8 @@ const editorMessage = document.querySelector<HTMLElement>("#editor-message")!;
 const differenceSummary = document.querySelector<HTMLElement>("#difference-summary")!;
 const leftEditor = document.querySelector<HTMLTextAreaElement>("#editor-left")!;
 const rightEditor = document.querySelector<HTMLTextAreaElement>("#editor-right")!;
+const leftHighlight = document.querySelector<HTMLPreElement>("#editor-left-highlight")!;
+const rightHighlight = document.querySelector<HTMLPreElement>("#editor-right-highlight")!;
 const copyLeftToRight = document.querySelector<HTMLButtonElement>("#copy-left-to-right")!;
 const copyRightToLeft = document.querySelector<HTMLButtonElement>("#copy-right-to-left")!;
 const saveLeft = document.querySelector<HTMLButtonElement>("#save-left")!;
@@ -123,6 +133,7 @@ let data: ComparisonResult | null = null;
 let activeFilter: Status | "all" = "all";
 let editorContext: EditorContext | null = null;
 let synchronizingScroll = false;
+let diffRenderTimer: number | null = null;
 
 folderPickers.left.addEventListener("click", () => void chooseFolder("left"));
 folderPickers.right.addEventListener("click", () => void chooseFolder("right"));
@@ -183,15 +194,17 @@ document.querySelector<HTMLButtonElement>("#editor-close")!.addEventListener("cl
 copyLeftToRight.addEventListener("click", () => {
   rightEditor.value = leftEditor.value;
   updateEditorState();
+  renderEditorDifferences();
   rightEditor.focus();
 });
 copyRightToLeft.addEventListener("click", () => {
   leftEditor.value = rightEditor.value;
   updateEditorState();
+  renderEditorDifferences();
   leftEditor.focus();
 });
-leftEditor.addEventListener("input", updateEditorState);
-rightEditor.addEventListener("input", updateEditorState);
+leftEditor.addEventListener("input", handleEditorInput);
+rightEditor.addEventListener("input", handleEditorInput);
 leftEditor.addEventListener("scroll", () => syncEditorScroll(leftEditor, rightEditor));
 rightEditor.addEventListener("scroll", () => syncEditorScroll(rightEditor, leftEditor));
 saveLeft.addEventListener("click", () => void saveEditorSide("left"));
@@ -597,7 +610,12 @@ async function openDiffEditor(row: ComparisonRow): Promise<void> {
     configureEditorSide("right", rightDocument);
     setEditorControlsDisabled(false);
     showEditorMessage("Edita cualquiera de los lados o copia el contenido completo en una dirección.", "info");
+    leftEditor.scrollTop = 0;
+    leftEditor.scrollLeft = 0;
+    rightEditor.scrollTop = 0;
+    rightEditor.scrollLeft = 0;
     updateEditorState();
+    renderEditorDifferences();
     leftEditor.focus();
   } catch (error) {
     closeEditor(true);
@@ -725,11 +743,117 @@ function updateEditorState(): void {
   setText("#editor-right-encoding", visibleEncoding(editorContext.right.encoding, rightEditor.value));
   setText("#editor-left-meta", `${formatBytes(new TextEncoder().encode(leftEditor.value).byteLength)} aprox. · ${lineCount(leftEditor.value)} líneas`);
   setText("#editor-right-meta", `${formatBytes(new TextEncoder().encode(rightEditor.value).byteLength)} aprox. · ${lineCount(rightEditor.value)} líneas`);
+}
 
-  const differingLines = countDifferingLines(leftEditor.value, rightEditor.value);
-  differenceSummary.textContent = differingLines === 0
-    ? "El contenido de ambos editores es idéntico"
-    : `${differingLines} ${differingLines === 1 ? "línea no coincide" : "líneas no coinciden"}`;
+function handleEditorInput(): void {
+  updateEditorState();
+  scheduleDiffRender();
+}
+
+function scheduleDiffRender(): void {
+  if (diffRenderTimer !== null) window.clearTimeout(diffRenderTimer);
+  differenceSummary.textContent = "Actualizando diferencias…";
+  diffRenderTimer = window.setTimeout(() => {
+    diffRenderTimer = null;
+    renderEditorDifferences();
+  }, 160);
+}
+
+function renderEditorDifferences(): void {
+  const diff = calculateLineDiff(leftEditor.value, rightEditor.value);
+  renderHighlightLayer(leftHighlight, diff.leftLines, diff.leftChanged);
+  renderHighlightLayer(rightHighlight, diff.rightLines, diff.rightChanged);
+  leftHighlight.scrollTop = leftEditor.scrollTop;
+  leftHighlight.scrollLeft = leftEditor.scrollLeft;
+  rightHighlight.scrollTop = rightEditor.scrollTop;
+  rightHighlight.scrollLeft = rightEditor.scrollLeft;
+
+  const leftCount = diff.leftChanged.filter(Boolean).length;
+  const rightCount = diff.rightChanged.filter(Boolean).length;
+  if (leftCount === 0 && rightCount === 0) {
+    differenceSummary.textContent = "El contenido de ambos editores es idéntico";
+  } else {
+    const suffix = diff.approximate ? " · bloque aproximado por tamaño" : "";
+    differenceSummary.textContent = `${leftCount} ${leftCount === 1 ? "línea" : "líneas"} en carpeta 1 · ${rightCount} ${rightCount === 1 ? "línea" : "líneas"} en carpeta 2${suffix}`;
+  }
+}
+
+function calculateLineDiff(leftText: string, rightText: string): LineDiffResult {
+  const leftLines = splitEditorLines(leftText);
+  const rightLines = splitEditorLines(rightText);
+  const leftChanged = Array<boolean>(leftLines.length).fill(false);
+  const rightChanged = Array<boolean>(rightLines.length).fill(false);
+  const width = rightLines.length + 1;
+  const matrixCells = (leftLines.length + 1) * width;
+  const maxMatrixCells = 4_000_000;
+
+  if (matrixCells > maxMatrixCells) {
+    markApproximateDifference(leftLines, rightLines, leftChanged, rightChanged);
+    return { leftLines, rightLines, leftChanged, rightChanged, approximate: true };
+  }
+
+  const lcs = new Uint32Array(matrixCells);
+  for (let leftIndex = leftLines.length - 1; leftIndex >= 0; leftIndex -= 1) {
+    const currentRow = leftIndex * width;
+    const nextRow = (leftIndex + 1) * width;
+    for (let rightIndex = rightLines.length - 1; rightIndex >= 0; rightIndex -= 1) {
+      lcs[currentRow + rightIndex] = leftLines[leftIndex] === rightLines[rightIndex]
+        ? lcs[nextRow + rightIndex + 1] + 1
+        : Math.max(lcs[nextRow + rightIndex], lcs[currentRow + rightIndex + 1]);
+    }
+  }
+
+  let leftIndex = 0;
+  let rightIndex = 0;
+  while (leftIndex < leftLines.length && rightIndex < rightLines.length) {
+    if (leftLines[leftIndex] === rightLines[rightIndex]) {
+      leftIndex += 1;
+      rightIndex += 1;
+    } else if (lcs[(leftIndex + 1) * width + rightIndex] >= lcs[leftIndex * width + rightIndex + 1]) {
+      leftChanged[leftIndex] = true;
+      leftIndex += 1;
+    } else {
+      rightChanged[rightIndex] = true;
+      rightIndex += 1;
+    }
+  }
+  while (leftIndex < leftLines.length) leftChanged[leftIndex++] = true;
+  while (rightIndex < rightLines.length) rightChanged[rightIndex++] = true;
+  return { leftLines, rightLines, leftChanged, rightChanged, approximate: false };
+}
+
+function splitEditorLines(text: string): string[] {
+  return text.replace(/\r\n?/g, "\n").split("\n");
+}
+
+function markApproximateDifference(
+  leftLines: string[],
+  rightLines: string[],
+  leftChanged: boolean[],
+  rightChanged: boolean[],
+): void {
+  let prefix = 0;
+  while (prefix < leftLines.length && prefix < rightLines.length && leftLines[prefix] === rightLines[prefix]) prefix += 1;
+  let leftEnd = leftLines.length - 1;
+  let rightEnd = rightLines.length - 1;
+  while (leftEnd >= prefix && rightEnd >= prefix && leftLines[leftEnd] === rightLines[rightEnd]) {
+    leftEnd -= 1;
+    rightEnd -= 1;
+  }
+  for (let index = prefix; index <= leftEnd; index += 1) leftChanged[index] = true;
+  for (let index = prefix; index <= rightEnd; index += 1) rightChanged[index] = true;
+}
+
+function renderHighlightLayer(layer: HTMLPreElement, lines: string[], changed: boolean[]): void {
+  const code = layer.querySelector<HTMLElement>("code")!;
+  const fragment = document.createDocumentFragment();
+  lines.forEach((line, index) => {
+    const span = document.createElement("span");
+    span.className = `diff-highlight-line${changed[index] ? " is-different" : ""}`;
+    span.textContent = line || "\u200b";
+    fragment.append(span);
+  });
+  code.replaceChildren(fragment);
 }
 
 function updateDirtyBadge(side: Side, dirty: boolean): void {
@@ -747,17 +871,6 @@ function lineCount(text: string): number {
   return text.length ? text.replace(/\r\n?/g, "\n").split("\n").length : 0;
 }
 
-function countDifferingLines(leftText: string, rightText: string): number {
-  const leftLines = leftText.length ? leftText.replace(/\r\n?/g, "\n").split("\n") : [];
-  const rightLines = rightText.length ? rightText.replace(/\r\n?/g, "\n").split("\n") : [];
-  const total = Math.max(leftLines.length, rightLines.length);
-  let differences = 0;
-  for (let index = 0; index < total; index += 1) {
-    if (leftLines[index] !== rightLines[index]) differences += 1;
-  }
-  return differences;
-}
-
 function syncEditorScroll(source: HTMLTextAreaElement, target: HTMLTextAreaElement): void {
   if (synchronizingScroll) return;
   synchronizingScroll = true;
@@ -767,6 +880,12 @@ function syncEditorScroll(source: HTMLTextAreaElement, target: HTMLTextAreaEleme
   const targetHorizontalRange = target.scrollWidth - target.clientWidth;
   target.scrollTop = sourceVerticalRange > 0 ? (source.scrollTop / sourceVerticalRange) * targetVerticalRange : 0;
   target.scrollLeft = sourceHorizontalRange > 0 ? (source.scrollLeft / sourceHorizontalRange) * targetHorizontalRange : 0;
+  const sourceHighlight = source === leftEditor ? leftHighlight : rightHighlight;
+  const targetHighlight = target === leftEditor ? leftHighlight : rightHighlight;
+  sourceHighlight.scrollTop = source.scrollTop;
+  sourceHighlight.scrollLeft = source.scrollLeft;
+  targetHighlight.scrollTop = target.scrollTop;
+  targetHighlight.scrollLeft = target.scrollLeft;
   requestAnimationFrame(() => { synchronizingScroll = false; });
 }
 
@@ -903,9 +1022,15 @@ function closeEditor(force = false): void {
   }
   editorOverlay.classList.add("d-none");
   document.body.classList.remove("editor-open");
+  if (diffRenderTimer !== null) {
+    window.clearTimeout(diffRenderTimer);
+    diffRenderTimer = null;
+  }
   editorContext = null;
   leftEditor.value = "";
   rightEditor.value = "";
+  leftHighlight.querySelector("code")!.replaceChildren();
+  rightHighlight.querySelector("code")!.replaceChildren();
 }
 
 function renderWarnings(items: string[]): void {

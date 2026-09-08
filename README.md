@@ -13,6 +13,7 @@ Por seguridad, los navegadores no muestran la ruta completa del equipo. En su lu
 ## Editor de diferencias
 
 - Pulsa una fila marcada como **Distinto** para abrir sus dos versiones.
+- Las líneas que cambian se resaltan en rojo en la carpeta 1 y en verde en la carpeta 2; el resaltado se actualiza mientras editas.
 - La etiqueta superior detecta UTF-8, UTF-8 con BOM, UTF-16 LE/BE, ASCII o ANSI (Windows-1252).
 - Usa **Copiar todo →** o **← Copiar todo** para sustituir un lado por el otro, o edita manualmente.
 - En Chrome y Edge, el selector moderno permite solicitar permiso y guardar sobre el fichero original.

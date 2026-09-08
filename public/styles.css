@@ -222,24 +222,49 @@ body.editor-open { overflow: hidden; }
 .encoding-badge { color: #2a5686; background: #dfedff; }
 .dirty-badge { color: #526277; background: #edf0f4; }
 .dirty-badge.is-dirty { color: #9b5b07; background: #fff0d9; }
-.code-editor {
+.code-editor-wrap {
+  position: relative;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+  background: #111c2d;
+}
+.code-highlight,
+.code-editor {
+  position: absolute;
+  inset: 0;
   width: 100%;
+  height: 100%;
+  margin: 0;
   resize: none;
   border: 0;
   border-radius: 0;
-  outline: 0;
   padding: 1rem;
-  color: #d7e1ee;
-  background: #111c2d;
   font: 0.82rem/1.55 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
   tab-size: 2;
   white-space: pre;
 }
+.code-highlight {
+  z-index: 1;
+  overflow: hidden;
+  color: transparent;
+  background: #111c2d;
+  pointer-events: none;
+}
+.code-highlight code { display: block; min-width: max-content; color: transparent; font: inherit; }
+.diff-highlight-line { display: block; min-width: 100%; min-height: 1.55em; margin: 0 -1rem; padding: 0 1rem; }
+.editor-panel-left .diff-highlight-line.is-different { background: rgba(226, 72, 84, 0.24); box-shadow: inset 4px 0 0 #ed6570; }
+.editor-panel-right .diff-highlight-line.is-different { background: rgba(30, 181, 137, 0.22); box-shadow: inset 4px 0 0 #36c99c; }
+.code-editor {
+  z-index: 2;
+  overflow: auto;
+  outline: 0;
+  color: #d7e1ee;
+  background: transparent;
+}
 .code-editor:focus { box-shadow: inset 0 0 0 2px #4f8dff; }
-.code-editor:disabled { color: #8291a5; background: #172235; }
-.editor-panel-left .code-editor { border-right: 1px solid #2a3a51; }
+.code-editor:disabled { color: #8291a5; }
+.editor-panel-left .code-editor-wrap { border-right: 1px solid #2a3a51; }
 .editor-panel-footer {
   display: flex;
   align-items: center;

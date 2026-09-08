@@ -180,7 +180,10 @@
                 <span id="editor-left-state" class="dirty-badge">Sin cambios</span>
               </div>
             </div>
-            <textarea id="editor-left" class="code-editor" wrap="off" spellcheck="false" aria-label="Contenido del fichero de la carpeta 1"></textarea>
+            <div class="code-editor-wrap">
+              <pre id="editor-left-highlight" class="code-highlight" aria-hidden="true"><code></code></pre>
+              <textarea id="editor-left" class="code-editor" wrap="off" spellcheck="false" aria-label="Contenido del fichero de la carpeta 1"></textarea>
+            </div>
             <div class="editor-panel-footer">
               <span id="editor-left-meta">—</span>
               <button id="save-left" class="btn btn-sm btn-primary" type="button">Guardar izquierda</button>
@@ -198,7 +201,10 @@
                 <span id="editor-right-state" class="dirty-badge">Sin cambios</span>
               </div>
             </div>
-            <textarea id="editor-right" class="code-editor" wrap="off" spellcheck="false" aria-label="Contenido del fichero de la carpeta 2"></textarea>
+            <div class="code-editor-wrap">
+              <pre id="editor-right-highlight" class="code-highlight" aria-hidden="true"><code></code></pre>
+              <textarea id="editor-right" class="code-editor" wrap="off" spellcheck="false" aria-label="Contenido del fichero de la carpeta 2"></textarea>
+            </div>
             <div class="editor-panel-footer">
               <span id="editor-right-meta">—</span>
               <button id="save-right" class="btn btn-sm btn-primary" type="button">Guardar derecha</button>
