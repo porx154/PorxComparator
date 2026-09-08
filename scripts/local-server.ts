@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.PORT ?? 4173);
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const PUBLIC_DIR = path.join(ROOT, "public");
+const PUBLIC_DIR = path.resolve(ROOT, "../public");
 
 const staticFiles = new Map<string, { fileName: string; contentType: string }>([
   ["/", { fileName: "index.html", contentType: "text/html; charset=utf-8" }],
