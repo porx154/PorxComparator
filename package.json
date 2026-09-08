@@ -1,0 +1,23 @@
+{
+  "name": "comparador-ficheros-local",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Comparador privado de carpetas en el navegador por ruta, tamaño y SHA-256",
+  "type": "module",
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "npm run clean && tsc && node scripts/prepare-static.mjs",
+    "start": "node dist/server.js",
+    "dev": "npm run build && npm start"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bootstrap": "5.3.8"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.0",
+    "typescript": "5.9.3"
+  }
+}

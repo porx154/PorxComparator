@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="es" data-bs-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Compara dos carpetas localmente por estructura, tamaño y SHA-256" />
+    <meta name="theme-color" content="#101d31" />
+    <title>FolderLens · Comparador privado de carpetas</title>
+    <link href="/bootstrap.min.css" rel="stylesheet" />
+    <link href="/styles.css" rel="stylesheet" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg app-navbar sticky-top">
+      <div class="container-fluid px-3 px-lg-4">
+        <a class="navbar-brand d-flex align-items-center gap-2 text-white" href="#">
+          <span class="brand-mark" aria-hidden="true">⇆</span>
+          <span>PorxFolder<span class="brand-accent">Comparador</span></span>
+        </a>
+        <span class="badge rounded-pill text-bg-light fw-medium">100 % local · Sin subidas</span>
+      </div>
+    </nav>
+
+    <main class="container-fluid px-3 px-lg-4 py-4">
+      <section class="intro mb-4">
+        <div>
+          <p class="eyebrow mb-2">COMPARADOR DE FICHEROS</p>
+          <h1 class="display-6 fw-bold mb-2">Encuentra cada diferencia.</h1>
+          <p class="text-secondary mb-0">Selecciona dos carpetas y compara su estructura, tamaño y contenido SHA-256.</p>
+        </div>
+        <div class="read-only-note mt-3 mt-lg-0">
+          <span class="note-icon" aria-hidden="true">✓</span>
+          <div><strong>Tus archivos permanecen privados</strong><small>Se leen y comparan únicamente dentro del navegador.</small></div>
+        </div>
+      </section>
+
+      <section class="path-workspace card border-0 shadow-sm mb-4">
+        <div class="card-body p-3 p-lg-4">
+          <form id="compare-form" novalidate>
+            <div class="row g-3 align-items-stretch">
+              <div class="col-lg">
+                <span class="form-label path-label"><span class="side-dot side-left"></span> CARPETA 1</span>
+                <label id="left-picker" class="folder-picker" for="left-folder">
+                  <input id="left-folder" class="visually-hidden" type="file" webkitdirectory multiple />
+                  <span class="folder-icon" aria-hidden="true">📁</span>
+                  <span class="folder-copy">
+                    <strong id="left-folder-name">Seleccionar carpeta</strong>
+                    <small id="left-folder-detail">Haz clic para elegirla en tu equipo</small>
+                  </span>
+                  <span class="folder-action">Elegir</span>
+                </label>
+              </div>
+              <div class="col-lg-auto swap-column">
+                <button id="swap-button" class="btn btn-outline-secondary rounded-circle swap-button" type="button" title="Intercambiar carpetas" aria-label="Intercambiar carpetas">⇄</button>
+              </div>
+              <div class="col-lg">
+                <span class="form-label path-label"><span class="side-dot side-right"></span> CARPETA 2</span>
+                <label id="right-picker" class="folder-picker" for="right-folder">
+                  <input id="right-folder" class="visually-hidden" type="file" webkitdirectory multiple />
+                  <span class="folder-icon" aria-hidden="true">📁</span>
+                  <span class="folder-copy">
+                    <strong id="right-folder-name">Seleccionar carpeta</strong>
+                    <small id="right-folder-detail">Haz clic para elegirla en tu equipo</small>
+                  </span>
+                  <span class="folder-action">Elegir</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="privacy-strip mt-4">
+              <span aria-hidden="true">🔒</span>
+              <small>El navegador no revela la ruta completa y ningún fichero se envía al servidor.</small>
+            </div>
+
+            <div id="progress-region" class="progress-region d-none mt-3" aria-live="polite">
+              <div class="d-flex justify-content-between gap-3 mb-1">
+                <small id="progress-label">Preparando la comparación…</small>
+                <small>SHA-256</small>
+              </div>
+              <div class="progress" role="progressbar" aria-label="Progreso de la comparación" aria-valuemin="0" aria-valuemax="100">
+                <div id="comparison-progress" class="progress-bar progress-bar-striped progress-bar-animated" aria-valuenow="0"></div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end mt-4">
+              <button id="compare-button" class="btn btn-primary btn-lg px-5" type="submit" disabled>
+                <span class="button-label">Comparar carpetas</span>
+                <span class="spinner-border spinner-border-sm ms-2 d-none" aria-hidden="true"></span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <div id="alert-region" aria-live="polite"></div>
+
+      <section id="results" class="d-none">
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-xl"><div class="metric-card"><span>Total carpeta 1</span><strong id="total-left">0</strong></div></div>
+          <div class="col-6 col-xl"><div class="metric-card"><span>Total carpeta 2</span><strong id="total-right">0</strong></div></div>
+          <div class="col-6 col-xl"><div class="metric-card metric-success"><span>Idénticos</span><strong id="total-identical">0</strong></div></div>
+          <div class="col-6 col-xl"><div class="metric-card metric-danger"><span>Diferentes</span><strong id="total-different">0</strong></div></div>
+          <div class="col-12 col-xl"><div class="metric-card metric-warning"><span>Solo en una carpeta</span><strong id="total-missing">0</strong></div></div>
+        </div>
+
+        <div class="comparison-shell card border-0 shadow-sm overflow-hidden">
+          <div class="toolbar p-3 border-bottom">
+            <div class="btn-group flex-wrap" role="group" aria-label="Filtrar resultados">
+              <button class="btn btn-sm btn-filter active" data-filter="all" type="button">Todos</button>
+              <button class="btn btn-sm btn-filter" data-filter="different" type="button">Diferentes</button>
+              <button class="btn btn-sm btn-filter" data-filter="left-only" type="button">Solo carpeta 1</button>
+              <button class="btn btn-sm btn-filter" data-filter="right-only" type="button">Solo carpeta 2</button>
+              <button class="btn btn-sm btn-filter" data-filter="identical" type="button">Idénticos</button>
+            </div>
+            <div class="input-group input-group-sm search-box">
+              <span class="input-group-text">⌕</span>
+              <input id="search" class="form-control" type="search" placeholder="Buscar fichero…" aria-label="Buscar fichero" />
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table comparison-table align-middle mb-0">
+              <thead>
+                <tr>
+                  <th class="file-column"><span class="side-dot side-left"></span> Carpeta 1</th>
+                  <th class="size-column text-end">Tamaño</th>
+                  <th class="status-column text-center">Estado</th>
+                  <th class="file-column"><span class="side-dot side-right"></span> Carpeta 2</th>
+                  <th class="size-column text-end">Tamaño</th>
+                </tr>
+              </thead>
+              <tbody id="comparison-body"></tbody>
+            </table>
+          </div>
+
+          <div class="empty-state d-none" id="empty-state">
+            <div class="empty-icon">⌕</div>
+            <h2 class="h5">No hay resultados para este filtro</h2>
+            <p class="text-secondary mb-0">Prueba otra búsqueda o cambia el estado seleccionado.</p>
+          </div>
+
+          <div class="result-footer px-3 py-2 border-top">
+            <span id="result-count">0 ficheros</span>
+            <span id="duration"></span>
+          </div>
+        </div>
+        <div id="warnings" class="mt-3"></div>
+      </section>
+    </main>
+
+    <footer class="container-fluid px-4 py-4 text-center text-secondary small">
+      FolderLens funciona íntegramente en tu navegador · No sube archivos a Internet
+    </footer>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
